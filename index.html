@@ -1,0 +1,298 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>XuJuliang · 个人主页</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧑‍💻</text></svg>">
+<style>
+  :root {
+    --bg: #0b1120;
+    --card: #111a2e;
+    --border: #1f2b47;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --green: #22c55e;
+    --blue: #3b82f6;
+    --grad: linear-gradient(90deg, #22c55e, #3b82f6);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, "Microsoft YaHei", sans-serif;
+    line-height: 1.7;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* ---------- 顶部导航 ---------- */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 10;
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 14px 24px;
+    background: rgba(11, 17, 32, .8);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--grad); color: #052e16;
+    font-weight: 500; font-size: 15px;
+  }
+  .links { display: flex; gap: 22px; font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+  .links a:hover { color: var(--text); }
+
+  /* ---------- 首屏 ---------- */
+  .hero {
+    min-height: 88vh;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    text-align: center; padding: 100px 20px 40px;
+  }
+  .hello { color: var(--green); font-size: 15px; letter-spacing: 2px; }
+  .hero h1 {
+    font-size: clamp(40px, 8vw, 68px);
+    font-weight: 500; line-height: 1.2; margin: 8px 0 4px;
+    background: var(--grad);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .type-line { font-size: clamp(16px, 3vw, 20px); min-height: 1.6em; color: var(--text); }
+  .cursor { color: var(--green); animation: blink 1s step-start infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .hero .sub { color: var(--muted); margin-top: 10px; font-size: 14px; }
+  .hero-btns { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    padding: 10px 26px; border-radius: 10px; font-size: 14px;
+    background: var(--grad); color: #052e16; transition: transform .2s;
+  }
+  .btn:hover { transform: translateY(-2px); }
+  .btn.ghost { background: transparent; border: 1px solid var(--border); color: var(--text); }
+
+  /* ---------- 内容区通用 ---------- */
+  section { max-width: 860px; margin: 0 auto; padding: 72px 20px; }
+  h2 { font-size: 26px; font-weight: 500; margin-bottom: 28px; }
+  h2 span { color: var(--green); margin-right: 8px; }
+
+  .reveal { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+  .reveal.visible { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    .reveal { transition: none; opacity: 1; transform: none; }
+  }
+
+  /* ---------- 关于我 ---------- */
+  .about-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .fact {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px; font-size: 14px;
+  }
+  .fact b { display: block; font-weight: 500; margin-bottom: 4px; }
+  .fact span { color: var(--muted); }
+  .about-text { color: var(--muted); font-size: 15px; margin-bottom: 22px; }
+  @media (max-width: 620px) { .about-grid { grid-template-columns: 1fr; } }
+
+  /* ---------- 技能 ---------- */
+  .tags { display: flex; flex-wrap: wrap; gap: 10px; }
+  .tag {
+    border: 1px solid var(--border); background: var(--card);
+    border-radius: 999px; padding: 7px 16px; font-size: 14px;
+  }
+  .tag em { font-style: normal; color: var(--muted); font-size: 12px; margin-left: 6px; }
+
+  /* ---------- 项目 ---------- */
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 620px) { .cards { grid-template-columns: 1fr; } }
+  .project {
+    display: block;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 22px;
+    transition: transform .2s, border-color .2s;
+  }
+  .project:hover { transform: translateY(-3px); border-color: var(--green); }
+  .project .icon { font-size: 30px; }
+  .project h3 { font-weight: 500; font-size: 17px; margin: 10px 0 6px; }
+  .project p { color: var(--muted); font-size: 14px; }
+  .project .go { display: inline-block; margin-top: 12px; color: var(--green); font-size: 14px; }
+
+  /* ---------- 足迹时间线 ---------- */
+  .timeline { border-left: 2px solid var(--border); margin-left: 8px; padding-left: 24px; }
+  .t-item { position: relative; padding-bottom: 26px; }
+  .t-item::before {
+    content: ''; position: absolute; left: -31px; top: 7px;
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green);
+  }
+  .t-item time { color: var(--green); font-size: 13px; }
+  .t-item h3 { font-weight: 500; font-size: 16px; }
+  .t-item p { color: var(--muted); font-size: 14px; }
+
+  /* ---------- 联系 ---------- */
+  .contact-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .contact-card {
+    flex: 1; min-width: 180px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px; font-size: 14px;
+    transition: border-color .2s;
+  }
+  .contact-card:hover { border-color: var(--green); }
+  .contact-card b { display: block; font-weight: 500; }
+  .contact-card span { color: var(--muted); font-size: 13px; }
+
+  footer {
+    border-top: 1px solid var(--border);
+    text-align: center; color: var(--muted); font-size: 13px;
+    padding: 28px 20px;
+  }
+  footer a { color: var(--green); }
+</style>
+</head>
+<body id="top">
+
+<nav>
+  <!-- ✏️ 把 logo 改成你名字的拼音首字母 -->
+  <a class="logo" href="#top">XJ</a>
+  <div class="links">
+    <a href="#about">关于</a>
+    <a href="#skills">技能</a>
+    <a href="#projects">项目</a>
+    <a href="#timeline">足迹</a>
+    <a href="#contact">联系</a>
+  </div>
+</nav>
+
+<header class="hero">
+  <p class="hello">👋 你好，我是</p>
+  <!-- ✏️ 换成你的名字 -->
+  <h1>XuJuliang</h1>
+  <p class="type-line"><span id="typed"></span><span class="cursor">|</span></p>
+  <!-- ✏️ 一句话介绍自己 -->
+  <p class="sub">计算机科学与技术 · 大一 · 正在用 AI 加速学习编程</p>
+  <div class="hero-btns">
+    <a class="btn" href="#projects">看我的项目</a>
+    <a class="btn ghost" href="#contact">联系我</a>
+  </div>
+</header>
+
+<section id="about" class="reveal">
+  <h2><span>01</span>关于我</h2>
+  <!-- ✏️ 两三句自我介绍，想怎么改就怎么改 -->
+  <p class="about-text">
+    我是一名刚入学的计算机专业大一新生，正在从零开始学编程。
+    这个网站就是我边学边搭的——从第一行 HTML 到上线，全程和 AI 师傅结对完成。
+    我相信"造出来才算学会"，所以这里会持续更新我的作业、项目和踩过的坑。
+  </p>
+  <div class="about-grid">
+    <div class="fact"><b>🎓 身份</b><span>计算机科学与技术 · 大一</span></div>
+    <div class="fact"><b>📚 正在学</b><span>C 语言 / Python / Web 基础</span></div>
+    <div class="fact"><b>🎯 本学期目标</b><span>不挂科，再做出 3 个小项目</span></div>
+    <div class="fact"><b>🌱 学习方式</b><span>AI 结对编程：它讲，我写，它改</span></div>
+  </div>
+</section>
+
+<section id="skills" class="reveal">
+  <h2><span>02</span>技能树</h2>
+  <!-- ✏️ 学到哪点亮到哪，别虚标，真实最可爱 -->
+  <div class="tags">
+    <span class="tag">C 语言<em>在学</em></span>
+    <span class="tag">Python<em>在学</em></span>
+    <span class="tag">HTML / CSS<em>入门</em></span>
+    <span class="tag">JavaScript<em>入门</em></span>
+    <span class="tag">Git<em>即将解锁</em></span>
+    <span class="tag">数据结构<em>在路上</em></span>
+  </div>
+</section>
+
+<section id="projects" class="reveal">
+  <h2><span>03</span>项目</h2>
+  <div class="cards">
+    <!-- ✅ 这是真的，点开就能玩 -->
+    <a class="project" href="snake.html">
+      <div class="icon">🐍</div>
+      <h3>贪吃蛇网页版</h3>
+      <p>我的第一个完整项目。Canvas 渲染、键盘 / 触摸双操作、最高分本地存档，还会越吃越快。约 260 行代码，全程 AI 师傅带教。</p>
+      <span class="go">▶ 点开就玩 →</span>
+    </a>
+    <a class="project" href="#top">
+      <div class="icon">🚧</div>
+      <h3>第二个项目 · 施工中</h3>
+      <p>也许是个人博客，也许是别的什么小工具。等我学会了就填上，见证一个新手的成长曲线。</p>
+      <span class="go">敬请期待 →</span>
+    </a>
+  </div>
+</section>
+
+<section id="timeline" class="reveal">
+  <h2><span>04</span>足迹</h2>
+  <div class="timeline">
+    <div class="t-item">
+      <time>2026.09</time>
+      <h3>🎒 入学</h3>
+      <p>成为计算机科学与技术专业的一名大一新生，第一次写下 Hello, World。</p>
+    </div>
+    <div class="t-item">
+      <time>2026.10</time>
+      <h3>🐍 第一个项目</h3>
+      <p>用 AI 结对编程的方式，从零做出贪吃蛇网页版，并搭起这个个人网站。</p>
+    </div>
+    <div class="t-item">
+      <time>未来</time>
+      <h3>✍️ 待续</h3>
+      <p>这里会一直更新。四年后回来看，应该会挺有意思的。</p>
+    </div>
+  </div>
+</section>
+
+<section id="contact" class="reveal">
+  <h2><span>05</span>联系我</h2>
+  <div class="contact-row">
+    <a class="contact-card" href="tel:15162090962">
+      <b>微信 / 电话</b><span>151 6209 0962</span>
+    </a>
+    <a class="contact-card" href="https://github.com/PingWuWangJin">
+      <b>GitHub</b><span>github.com/PingWuWangJin</span>
+    </a>
+  </div>
+</section>
+
+<footer>
+  © 2026 XuJuliang · 这个网站由一个新手和 AI 一行行聊出来 ·
+  <a href="snake.html">顺便玩玩我写的贪吃蛇</a>
+</footer>
+
+<script>
+// ---------- 打字机效果 ----------
+const phrases = [
+  '正在学 C 语言',
+  '正在啃数据结构',
+  '正在用 AI 结对编程',
+  '目标：四年造出 10 个项目',
+];
+const typed = document.getElementById('typed');
+let pi = 0, ci = 0, deleting = false;
+
+function tick() {
+  const text = phrases[pi];
+  ci += deleting ? -1 : 1;
+  typed.textContent = text.slice(0, ci);
+  let delay = deleting ? 60 : 130;
+  if (!deleting && ci === text.length) { delay = 1600; deleting = true; }
+  else if (deleting && ci === 0) { deleting = false; pi = (pi + 1) % phrases.length; delay = 400; }
+  setTimeout(tick, delay);
+}
+tick();
+
+// ---------- 滚动到可视区域时淡入 ----------
+const observer = new IntersectionObserver((entries) => {
+  for (const en of entries) {
+    if (en.isIntersecting) {
+      en.target.classList.add('visible');
+      observer.unobserve(en.target);
+    }
+  }
+}, { threshold: 0.12 });
+document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+</script>
+</body>
+</html>
