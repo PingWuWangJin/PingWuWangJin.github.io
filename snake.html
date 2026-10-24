@@ -16,15 +16,24 @@
     font-family: system-ui, "Microsoft YaHei", sans-serif;
     padding: 16px;
   }
-  .game { display: flex; flex-direction: column; gap: 12px; align-items: center; }
-  .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  .game { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   h1 { font-size: 20px; font-weight: 500; }
-  .chips { display: flex; gap: 8px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
   .chip {
     background: #1e293b; border-radius: 999px; padding: 4px 12px;
     font-size: 13px; color: #94a3b8;
   }
   .chip b { color: #e2e8f0; font-weight: 500; margin-left: 4px; }
+  .chip-btn { border: none; font-family: inherit; cursor: pointer; }
+  .challenge {
+    width: min(480px, calc(100vw - 32px));
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    background: #1e293b; border: 1px solid #f59e0b55;
+    border-radius: 10px; padding: 8px 12px; font-size: 13px; color: #cbd5e1;
+  }
+  .challenge b { color: #fbbf24; font-weight: 500; }
+  .challenge .x { border: none; background: none; color: #64748b; font-size: 15px; cursor: pointer; }
   .board-wrap { position: relative; }
   canvas {
     display: block;
@@ -35,27 +44,71 @@
     border: 1px solid #24324d;
     border-radius: 12px;
   }
+  .float {
+    position: absolute; color: #fbbf24; font-size: 14px; font-weight: 500;
+    pointer-events: none; transform: translate(-50%, -50%);
+    animation: rise .8s ease-out forwards;
+    text-shadow: 0 1px 4px rgba(0,0,0,.6);
+  }
+  @keyframes rise { to { transform: translate(-50%, -160%); opacity: 0; } }
   .overlay {
     position: absolute; inset: 0;
-    display: flex; flex-direction: column; gap: 8px;
-    align-items: center; justify-content: center;
-    background: rgba(11, 18, 32, .72);
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(11, 18, 32, .82);
     backdrop-filter: blur(3px);
     border-radius: 12px;
     text-align: center;
     cursor: pointer;
+    padding: 14px;
   }
-  .overlay.hidden { display: none; }
-  .overlay h2 { font-size: 22px; font-weight: 500; }
-  .overlay p { font-size: 13px; color: #94a3b8; }
-  .controls { display: flex; gap: 10px; align-items: center; }
-  button {
+  .hidden { display: none !important; }
+  .page { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+  .page h2 { font-size: 20px; font-weight: 500; }
+  .page p { font-size: 13px; color: #94a3b8; line-height: 1.6; }
+  .gallery {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    width: 100%; max-width: 400px;
+  }
+  .g-tile {
+    background: #1e293b; border: 1px solid #334155; border-radius: 10px;
+    padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px;
+    font-family: inherit; cursor: pointer;
+  }
+  .g-tile:hover { border-color: #64748b; }
+  .g-tile.active { border-color: #22c55e; box-shadow: 0 0 0 1px #22c55e; }
+  .g-tile.locked { opacity: .45; }
+  .g-bar { width: 80%; height: 9px; border-radius: 5px; }
+  .g-name { font-size: 12px; color: #e2e8f0; }
+  .g-state { font-size: 11px; color: #94a3b8; }
+  .lobby-btns { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .btn-primary {
     background: #22c55e; color: #052e16; border: none;
     border-radius: 8px; padding: 9px 22px;
     font-size: 14px; font-family: inherit; cursor: pointer;
   }
-  button:hover { background: #4ade80; }
+  .btn-primary:hover { background: #4ade80; }
+  .btn2 {
+    background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
+    border-radius: 8px; padding: 9px 18px;
+    font-size: 13px; font-family: inherit; cursor: pointer;
+  }
+  .btn2:hover { border-color: #64748b; }
+  .nick-input {
+    background: #1e293b; color: #e2e8f0; border: 1px solid #334155;
+    border-radius: 8px; padding: 9px 12px; width: 210px;
+    font-size: 14px; font-family: inherit; text-align: center;
+  }
+  .lb-list {
+    width: 100%; max-width: 320px; max-height: 250px; overflow-y: auto;
+    display: flex; flex-direction: column; gap: 4px;
+    font-size: 13px; color: #cbd5e1; text-align: left;
+  }
+  .lb-row { display: flex; justify-content: space-between; gap: 12px; padding: 5px 10px; background: #1e293b; border-radius: 8px; }
+  .lb-row b { color: #fbbf24; font-weight: 500; }
+  .lb-row.me { border: 1px solid #22c55e; }
+  .controls { display: flex; gap: 10px; align-items: center; }
   .hint { font-size: 12px; color: #64748b; }
+  .skin-line { font-size: 12px; color: #64748b; }
   .credit { font-size: 12px; color: #475569; margin-top: 2px; }
 </style>
 </head>
@@ -64,21 +117,62 @@
   <div class="topbar">
     <h1>🐍 贪吃蛇</h1>
     <div class="chips">
+      <button class="chip chip-btn" id="nickBtn" type="button">👤 PWWJ</button>
       <span class="chip">得分<b id="score">0</b></span>
       <span class="chip">最高<b id="best">0</b></span>
     </div>
   </div>
-  <div class="board-wrap">
+  <div id="challenge" class="challenge hidden">
+    <span id="challenge-text"></span>
+    <button class="x" id="challenge-x" type="button" aria-label="关闭">✕</button>
+  </div>
+  <div class="board-wrap" id="board-wrap">
     <canvas id="board" width="480" height="480"></canvas>
     <div class="overlay" id="overlay">
-      <h2 id="overlay-title">🐍 贪吃蛇</h2>
-      <p id="overlay-hint">按 空格 开始 · 方向键 / WASD 控制</p>
+      <!-- 页面1：首次进入，建立档案 -->
+      <div class="page hidden" id="page-nick">
+        <h2>🎓 建立你的档案</h2>
+        <p>起个名字，用来上排行榜、发挑战链接<br>（存档就在这台设备上）</p>
+        <input class="nick-input" id="nick-input" maxlength="12" placeholder="你的名字 / 微信昵称">
+        <button class="btn-primary" id="nick-save" type="button">保存并进入大厅</button>
+      </div>
+      <!-- 页面2：大厅 = 皮肤图鉴 -->
+      <div class="page hidden" id="page-lobby">
+        <h2>🐍 贪吃蛇大厅</h2>
+        <p id="lobby-hint">点皮肤换装 · 达到分数解锁更牛的款式</p>
+        <div class="gallery" id="gallery"></div>
+        <div class="lobby-btns">
+          <button class="btn-primary" id="btn" type="button">开始游戏</button>
+          <button class="btn2" id="lbBtn" type="button">🏆 排行榜</button>
+        </div>
+      </div>
+      <!-- 页面3：结算 -->
+      <div class="page hidden" id="page-over">
+        <h2 id="over-title">游戏结束</h2>
+        <p id="over-hint"></p>
+        <div class="lobby-btns">
+          <button class="btn-primary" id="againBtn" type="button">再来一局</button>
+          <button class="btn2" id="shareBtn" type="button">📤 复制挑战链接</button>
+          <button class="btn2" id="homeBtn" type="button">大厅</button>
+        </div>
+      </div>
+      <!-- 页面4：暂停 -->
+      <div class="page hidden" id="page-pause">
+        <h2>已暂停</h2>
+        <p id="pause-hint"></p>
+      </div>
+      <!-- 页面5：排行榜 -->
+      <div class="page hidden" id="page-lb">
+        <h2>🏆 排行榜</h2>
+        <div class="lb-list" id="lb-list"></div>
+        <button class="btn2" id="lbBack" type="button">返回</button>
+      </div>
     </div>
   </div>
   <div class="controls">
-    <button id="btn" type="button">开始游戏</button>
-    <span class="hint">空格 = 开始 / 暂停</span>
+    <span class="hint">空格 = 开始 / 暂停 · 回大厅点「大厅」</span>
   </div>
+  <p class="skin-line" id="skinLine"></p>
   <p class="credit">🐍 我的第一行代码 · 与 ZCode 结对编程写成</p>
 </main>
 <script>
@@ -87,37 +181,267 @@ const canvas = document.getElementById('board');
 const ctx = canvas.getContext('2d');
 const GRID = 24;                    // 棋盘切成 24×24 个格子
 const CELL = canvas.width / GRID;   // 每个格子的像素大小
+const boardWrap = document.getElementById('board-wrap');
 
 const scoreEl = document.getElementById('score');
 const bestEl = document.getElementById('best');
 const overlay = document.getElementById('overlay');
-const overlayTitle = document.getElementById('overlay-title');
-const overlayHint = document.getElementById('overlay-hint');
+const nickBtn = document.getElementById('nickBtn');
+const challengeEl = document.getElementById('challenge');
+const challengeText = document.getElementById('challenge-text');
+const challengeX = document.getElementById('challenge-x');
+const galleryEl = document.getElementById('gallery');
+const lobbyHint = document.getElementById('lobby-hint');
+const overTitle = document.getElementById('over-title');
+const overHint = document.getElementById('over-hint');
+const pauseHint = document.getElementById('pause-hint');
+const lbList = document.getElementById('lb-list');
 const btn = document.getElementById('btn');
+const shareBtn = document.getElementById('shareBtn');
+const skinLine = document.getElementById('skinLine');
 
-let snake, dir, pendingDirs, food, score, speed, state, timer;
-let best = loadBest();
-bestEl.textContent = best;
+// ---------- 在线排行榜开关 ----------
+// 在 Supabase 建好库后，把下面两个字符串填上，排行榜立刻点亮
+// ---------- 在线排行榜开关 ----------
+// 国内直连 Supabase 暂时不通，先休眠（游戏其他功能不受影响）。
+// 以后装好网络中转（Cloudflare Worker），把下面两行填回去就复活：
+//   url: 'https://fxmoctofxglqrahbzddc.supabase.co',
+//   key: 'sb_publishable_5vD-hXbxcD_EoKe-IZcXOg_jv_KWC6Y',
+const LEADERBOARD = { url: '', key: '' };
+
+// ---------- 皮肤图鉴：need = 解锁需要的历史最高分 ----------
+const SKINS = [
+  { name: '经典绿',   icon: '🌿', head: '#4ade80', body1: '#16a34a', body2: '#15803d', food: '#f87171', need: 0 },
+  { name: '烈焰红',   icon: '🔥', head: '#fca5a5', body1: '#ef4444', body2: '#dc2626', need: 100 },
+  { name: '海洋蓝',   icon: '🌊', head: '#7dd3fc', body1: '#0ea5e9', body2: '#0284c7', need: 250 },
+  { name: '赛博紫',   icon: '💜', head: '#d8b4fe', body1: '#a855f7', body2: '#9333ea', need: 500 },
+  { name: '橘子汽水', icon: '🍊', head: '#fdba74', body1: '#f97316', body2: '#ea580c', need: 900 },
+  { name: '暗夜幽灵', icon: '👻', head: '#e2e8f0', body1: '#94a3b8', body2: '#64748b', need: 1500 },
+];
+
+// ---------- 食物图鉴：weight = 出现概率权重，score = 分值 ----------
+const FOOD_TYPES = [
+  { icon: '🍎', name: '苹果', score: 10,  weight: 55, size: 0.78 },
+  { icon: '🍇', name: '葡萄', score: 25,  weight: 25, size: 0.66 },
+  { icon: '🍊', name: '金桔', score: 50,  weight: 14, size: 0.78 },
+  { icon: '⭐', name: '星星', score: 100, weight: 6,  size: 0.88 },
+];
+const FOOD_COUNT = 3; // 场上同时存在几个食物，想改难度就改这里
+
 const isTouch = matchMedia('(pointer: coarse)').matches; // 手机/平板 = true
 const SPACE = isTouch ? '轻点屏幕' : '按 空格';
 
+// ---------- 玩家数据（存在浏览器本地） ----------
+let snake, dir, pendingDirs, foods, score, speed, state, timer;
+let floats = []; // 飘分动画
+let incoming = null; // 收到的好友挑战 { name, score }
+
+let best = loadBest();
+bestEl.textContent = best;
+
+let nick = loadNick();
+nickBtn.textContent = '👤 ' + nick;
+
+let skinIdx = loadSkin();
+if (skinIdx === null || skinIdx < 0 || skinIdx >= SKINS.length || best < SKINS[skinIdx].need) {
+  skinIdx = bestUnlockedIdx(); // 默认用最强皮肤
+}
+
+// ---------- 读写存档 ----------
+function loadBest() {
+  try { return Number(localStorage.getItem('snake-best')) || 0; } catch { return 0; }
+}
+function saveBest(v) {
+  try { localStorage.setItem('snake-best', String(v)); } catch {}
+}
+function loadNick() {
+  try { return localStorage.getItem('snake-nick') || 'PWWJ'; } catch { return 'PWWJ'; }
+}
+function saveNick(v) {
+  try { localStorage.setItem('snake-nick', v); } catch {}
+}
+function loadSkin() {
+  try {
+    const v = localStorage.getItem('snake-skin');
+    return v === null || v === '' ? null : Number(v);
+  } catch { return null; }
+}
+function saveSkin() {
+  try { localStorage.setItem('snake-skin', String(skinIdx)); } catch {}
+}
+
+// ---------- 好友挑战：链接就是邀请函 ----------
+function challengeURL() {
+  return location.href.split('#')[0] + '#c=1&n=' + encodeURIComponent(nick) + '&s=' + score;
+}
+
+function showChallengeBanner() {
+  if (!incoming) return;
+  challengeText.textContent = '';
+  const tag = document.createElement('b');
+  tag.textContent = '⚡ 挑战：';
+  challengeText.appendChild(tag);
+  challengeText.appendChild(document.createTextNode(
+    incoming.name + ' 拿了 ' + incoming.score + ' 分，你能赢吗？'));
+  challengeEl.classList.remove('hidden');
+}
+
+function readIncomingChallenge() {
+  // 链接长这样：snake.html#c=1&n=PWWJ&s=128
+  const params = new URLSearchParams(location.hash.slice(1));
+  if (params.has('c') && params.get('n') && params.get('s')) {
+    incoming = { name: params.get('n'), score: Number(params.get('s')) || 0 };
+  }
+}
+
+challengeX.addEventListener('click', () => challengeEl.classList.add('hidden'));
+
+// ---------- 复制工具 ----------
+function copyText(text) {
+  if (navigator.clipboard) {
+    return navigator.clipboard.writeText(text).then(() => true, () => fallbackCopy(text));
+  }
+  return Promise.resolve(fallbackCopy(text));
+}
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  let ok = false;
+  try { ok = document.execCommand('copy'); } catch {}
+  ta.remove();
+  if (!ok) prompt('手动复制下面的链接', text);
+  return ok;
+}
+
+shareBtn.addEventListener('click', () => {
+  copyText(challengeURL()).then(() => {
+    const old = shareBtn.textContent;
+    shareBtn.textContent = '✅ 已复制';
+    setTimeout(() => { shareBtn.textContent = old; }, 2200);
+  });
+});
+
+// ---------- 排行榜（填了 LEADERBOARD 配置就自动激活） ----------
+function lbEnabled() { return !!(LEADERBOARD.url && LEADERBOARD.key); }
+function lbHeaders() {
+  return { apikey: LEADERBOARD.key, Authorization: 'Bearer ' + LEADERBOARD.key, 'Content-Type': 'application/json' };
+}
+
+// 只在打破自己的云端纪录时才上传，省请求也少刷屏
+async function lbSubmit(name, scoreVal) {
+  if (!lbEnabled() || scoreVal <= 0) return;
+  try {
+    const q = LEADERBOARD.url + '/rest/v1/scores?name=eq.' + encodeURIComponent(name) + '&select=score&order=score.desc&limit=1';
+    const r = await fetch(q, { headers: lbHeaders() });
+    const rows = await r.json();
+    if (!Array.isArray(rows) || !rows.length || scoreVal > rows[0].score) {
+      await fetch(LEADERBOARD.url + '/rest/v1/scores', {
+        method: 'POST',
+        headers: lbHeaders(),
+        body: JSON.stringify({ name, score: scoreVal }),
+      });
+    }
+  } catch {}
+}
+
+async function lbFetchTop() {
+  const q = LEADERBOARD.url + '/rest/v1/scores?select=name,score&order=score.desc&limit=20';
+  const r = await fetch(q, { headers: lbHeaders() });
+  if (!r.ok) throw new Error('HTTP ' + r.status);
+  return r.json();
+}
+
+function openLb() {
+  state = 'lb';
+  showPage('page-lb');
+  if (!lbEnabled()) {
+    lbList.innerHTML = '';
+    const p = document.createElement('div');
+    p.className = 'lb-row';
+    p.textContent = '在线排行榜筹备中：数据库已经建好，但国内直连暂时不通，等装好网络中转就开业。你的最高分照常保存在本地，挑战链接也照常能用。';
+    lbList.appendChild(p);
+    return;
+  }
+  lbList.textContent = '加载中…';
+  lbFetchTop().then(rows => {
+    lbList.innerHTML = '';
+    if (!rows.length) {
+      lbList.textContent = '还没有人上榜，快去占第一！';
+      return;
+    }
+    rows.forEach((row, i) => {
+      const div = document.createElement('div');
+      div.className = 'lb-row' + (row.name === nick ? ' me' : '');
+      const l = document.createElement('span');
+      l.textContent = (i + 1) + '. ' + row.name;
+      const r = document.createElement('b');
+      r.textContent = row.score;
+      div.appendChild(l);
+      div.appendChild(r);
+      lbList.appendChild(div);
+    });
+  }).catch(err => {
+    lbList.textContent = '加载失败：' + err.message;
+  });
+}
+
+document.getElementById('lbBtn').addEventListener('click', openLb);
+document.getElementById('lbBack').addEventListener('click', toLobby);
+
+// ---------- 页面切换 ----------
+const PAGES = ['page-nick', 'page-lobby', 'page-over', 'page-pause', 'page-lb'];
+function showPage(id) {
+  PAGES.forEach(p => document.getElementById(p).classList.toggle('hidden', p !== id));
+  overlay.classList.remove('hidden');
+}
+function toLobby() {
+  state = 'lobby';
+  renderGallery();
+  updateSkinLine();
+  btn.textContent = '开始游戏';
+  showPage('page-lobby');
+}
+
 // ---------- 游戏状态 ----------
+function bestUnlockedIdx() {
+  let idx = 0;
+  SKINS.forEach((s, i) => { if (best >= s.need) idx = i; });
+  return idx;
+}
+
 function reset() {
   snake = [{ x: 11, y: 12 }, { x: 10, y: 12 }, { x: 9, y: 12 }]; // 头在数组最前面
   dir = { x: 1, y: 0 };     // 初始朝右爬
   pendingDirs = [];         // 玩家按得太快时，方向先在这排队
   score = 0;
   speed = 150;              // 毫秒/步，数字越小越快
-  placeFood();
+  foods = [];
+  for (let i = 0; i < FOOD_COUNT; i++) spawnFood();
   scoreEl.textContent = score;
 }
 
 function rand(n) { return Math.floor(Math.random() * n); }
 
-function placeFood() {
+function pickFoodType() {
+  let roll = rand(100);
+  for (const t of FOOD_TYPES) {
+    if (roll < t.weight) return t;
+    roll -= t.weight;
+  }
+  return FOOD_TYPES[0];
+}
+
+function spawnFood() {
+  let pos;
   do {
-    food = { x: rand(GRID), y: rand(GRID) };
-  } while (snake.some(s => s.x === food.x && s.y === food.y));
+    pos = { x: rand(GRID), y: rand(GRID) };
+  } while (
+    snake.some(s => s.x === pos.x && s.y === pos.y) ||
+    foods.some(f => f.x === pos.x && f.y === pos.y)
+  );
+  foods.push({ x: pos.x, y: pos.y, type: pickFoodType() });
 }
 
 function start() {
@@ -133,34 +457,139 @@ function toggle() {
   if (state === 'running') {
     state = 'paused';
     clearTimeout(timer);
-    showOverlay('已暂停', SPACE + ' 继续');
+    pauseHint.textContent = SPACE + ' 继续，或点「大厅」去换皮肤';
+    showPage('page-pause');
     btn.textContent = '继续';
   } else if (state === 'paused') {
     state = 'running';
     overlay.classList.add('hidden');
     btn.textContent = '暂停';
     timer = setTimeout(step, speed);
-  } else {
-    start(); // ready 或 over 状态
+  } else if (state === 'lobby' || state === 'over') {
+    start();
+  } else if (state === 'lb') {
+    toLobby();
   }
-}
-
-function showOverlay(title, hint) {
-  overlayTitle.textContent = title;
-  overlayHint.textContent = hint;
-  overlay.classList.remove('hidden');
 }
 
 function gameOver() {
   state = 'over';
   clearTimeout(timer);
+  const oldBest = best;
   if (score > best) {
     best = score;
     saveBest(best);
     bestEl.textContent = best;
   }
-  showOverlay('游戏结束', '本局得分 ' + score + ' · ' + SPACE + ' 再来一局');
-  btn.textContent = '再来一局';
+  let extra = '';
+  if (incoming) {
+    if (score > incoming.score) {
+      extra = '🏆 你赢了 ' + incoming.name + '（TA：' + incoming.score + ' 分），复制链接反击回去！';
+    } else if (score === incoming.score) {
+      extra = '和 ' + incoming.name + ' 打平了，再来一局分出胜负！';
+    } else {
+      extra = '还差 ' + (incoming.score - score) + ' 分就能赢 ' + incoming.name + '，再来一局！';
+    }
+  }
+  const newly = SKINS.filter(s => oldBest < s.need && s.need <= best).map(s => s.icon + ' ' + s.name);
+  if (newly.length) extra += ' 🎁 解锁新皮肤：' + newly.join('、');
+  overTitle.textContent = '游戏结束';
+  overHint.textContent = '本局得分 ' + score + ' · ' + SPACE + ' 再来一局' + (extra ? '。' + extra : '');
+  btn.textContent = '开始游戏';
+  showPage('page-over');
+  lbSubmit(nick, score); // 开了排行榜就自动上传
+}
+
+// ---------- 皮肤图鉴 ----------
+function updateSkinLine() {
+  skinLine.textContent = '皮肤：' + SKINS[skinIdx].icon + ' ' + SKINS[skinIdx].name;
+}
+
+let hintTimer;
+function flashHint(msg) {
+  clearTimeout(hintTimer);
+  lobbyHint.textContent = msg;
+  hintTimer = setTimeout(() => {
+    lobbyHint.textContent = '点皮肤换装 · 达到分数解锁更牛的款式';
+  }, 2500);
+}
+
+function renderGallery() {
+  galleryEl.innerHTML = '';
+  SKINS.forEach((s, i) => {
+    const unlocked = best >= s.need;
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'g-tile' + (unlocked ? '' : ' locked') + (skinIdx === i ? ' active' : '');
+    b.title = unlocked ? '使用 ' + s.name : '🔒 历史最高分达到 ' + s.need + ' 解锁';
+    b.setAttribute('aria-label', b.title);
+    // 色条预览：头色 → 身体两色
+    const bar = document.createElement('div');
+    bar.className = 'g-bar';
+    bar.style.background = 'linear-gradient(90deg, ' + s.head + ', ' + s.body1 + ', ' + s.body2 + ')';
+    const name = document.createElement('div');
+    name.className = 'g-name';
+    name.textContent = s.icon + ' ' + s.name;
+    const st = document.createElement('div');
+    st.className = 'g-state';
+    st.textContent = skinIdx === i ? '✓ 使用中' : (unlocked ? '点击使用' : '🔒 ' + s.need + ' 分');
+    b.appendChild(bar);
+    b.appendChild(name);
+    b.appendChild(st);
+    b.addEventListener('click', () => {
+      if (!unlocked) {
+        flashHint('🔒 历史最高分达到 ' + s.need + ' 分解锁「' + s.name + '」，当前最高 ' + best + ' 分');
+        return;
+      }
+      skinIdx = i;
+      saveSkin();
+      renderGallery();
+      updateSkinLine();
+    });
+    galleryEl.appendChild(b);
+  });
+}
+
+// ---------- 起名 / 档案 ----------
+const nickInput = document.getElementById('nick-input');
+document.getElementById('nick-save').addEventListener('click', saveNickFromInput);
+nickInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') saveNickFromInput();
+});
+
+function saveNickFromInput() {
+  const clean = nickInput.value.trim().slice(0, 12);
+  if (!clean) {
+    nickInput.value = '';
+    nickInput.placeholder = '名字不能为空';
+    return;
+  }
+  nick = clean;
+  saveNick(nick);
+  try { localStorage.setItem('snake-nick-set', '1'); } catch {}
+  nickBtn.textContent = '👤 ' + nick;
+  toLobby();
+}
+
+nickBtn.addEventListener('click', () => {
+  if (state === 'running') { // 正在玩就先暂停
+    state = 'paused';
+    clearTimeout(timer);
+  }
+  nickInput.value = nick;
+  state = 'nick';
+  showPage('page-nick');
+});
+
+// ---------- 飘分动画 ----------
+function showFloat(gx, gy, text) {
+  const s = document.createElement('span');
+  s.className = 'float';
+  s.textContent = text;
+  s.style.left = ((gx + 0.5) / GRID * 100) + '%';
+  s.style.top = ((gy + 0.5) / GRID * 100) + '%';
+  boardWrap.appendChild(s);
+  setTimeout(() => s.remove(), 850);
 }
 
 // ---------- 核心逻辑：蛇每走一步 ----------
@@ -176,11 +605,15 @@ function step() {
   if (hitWall || hitSelf) { gameOver(); return; }
 
   snake.unshift(head);        // 新头塞到最前面
-  if (head.x === food.x && head.y === food.y) {
-    score += 10;              // 吃到了：尾巴不缩，蛇变长一格
+  const fi = foods.findIndex(f => f.x === head.x && f.y === head.y);
+  if (fi !== -1) {
+    const t = foods[fi].type;
+    score += t.score;         // 不同食物不同分
     speed = Math.max(70, speed - 3);
-    placeFood();
     scoreEl.textContent = score;
+    showFloat(head.x, head.y, '+' + t.score + (t.icon === '🍎' ? '' : ' ' + t.icon));
+    foods.splice(fi, 1);      // 吃掉一个，马上补一个
+    spawnFood();
   } else {
     snake.pop();              // 没吃到：尾巴删一格，总长不变
   }
@@ -197,11 +630,13 @@ const KEYS = {
 };
 
 document.addEventListener('keydown', (e) => {
+  if (e.target && e.target.tagName === 'INPUT') return; // 打字时不抢键盘
+  if (state === 'nick') return;
   if (e.code === 'Space') { e.preventDefault(); toggle(); return; }
   const k = KEYS[e.code];
   if (!k) return;
   e.preventDefault();
-  if (state === 'ready' || state === 'over') start();
+  if (state === 'lobby' || state === 'over') start();
   if (state === 'running') queueDir(k[0], k[1]);
 });
 
@@ -222,7 +657,6 @@ canvas.addEventListener('touchend', (e) => {
   const dx = e.changedTouches[0].clientX - touchX;
   const dy = e.changedTouches[0].clientY - touchY;
   if (Math.abs(dx) < 24 && Math.abs(dy) < 24) { toggle(); return; } // 轻点 = 开始/暂停
-  if (state === 'ready' || state === 'over') start();
   if (state === 'running') {
     if (Math.abs(dx) > Math.abs(dy)) queueDir(Math.sign(dx), 0);
     else queueDir(0, Math.sign(dy));
@@ -230,7 +664,18 @@ canvas.addEventListener('touchend', (e) => {
 });
 
 btn.addEventListener('click', () => { toggle(); btn.blur(); });
-overlay.addEventListener('click', toggle);
+document.getElementById('againBtn').addEventListener('click', start);
+document.getElementById('homeBtn').addEventListener('click', () => {
+  reset();
+  draw();
+  toLobby();
+});
+
+// 遮罩上点空白处 = 开始/暂停；点到按钮和图鉴不触发
+overlay.addEventListener('click', (e) => {
+  if (e.target.closest('button, input')) return;
+  if (state === 'lobby' || state === 'over' || state === 'paused') toggle();
+});
 
 // ---------- 画面绘制 ----------
 function draw() {
@@ -244,17 +689,20 @@ function draw() {
       }
     }
   }
-  // 食物：红色圆
-  ctx.fillStyle = '#f87171';
-  ctx.beginPath();
-  ctx.arc(food.x * CELL + CELL / 2, food.y * CELL + CELL / 2, CELL / 2 - 4, 0, Math.PI * 2);
-  ctx.fill();
+  // 食物：用 emoji 画，一眼分清种类
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const f of foods) {
+    ctx.font = Math.floor(CELL * f.type.size) + 'px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
+    ctx.fillText(f.type.icon, f.x * CELL + CELL / 2, f.y * CELL + CELL / 2 + 1);
+  }
   // 蛇身：从尾巴画到头，保证头在最上层
+  const s = SKINS[skinIdx];
   for (let i = snake.length - 1; i >= 1; i--) {
-    ctx.fillStyle = i % 2 === 0 ? '#16a34a' : '#15803d';
+    ctx.fillStyle = i % 2 === 0 ? s.body1 : s.body2;
     fillCell(snake[i], 2, 5);
   }
-  ctx.fillStyle = '#4ade80';
+  ctx.fillStyle = s.head;
   fillCell(snake[0], 1, 6);
   drawEyes();
 }
@@ -275,29 +723,25 @@ function drawEyes() {
   const fx = dir.x * 4, fy = dir.y * 4;   // 沿前进方向偏一点
   const px = -dir.y * 4, py = dir.x * 4;  // 垂直方向分左右两只眼
   ctx.fillStyle = '#052e16';
-  for (const s of [1, -1]) {
+  for (const side of [1, -1]) {
     ctx.beginPath();
-    ctx.arc(cx + fx + px * s, cy + fy + py * s, 2, 0, Math.PI * 2);
+    ctx.arc(cx + fx + px * side, cy + fy + py * side, 2, 0, Math.PI * 2);
     ctx.fill();
   }
 }
 
-// ---------- 最高分存档 ----------
-function loadBest() {
-  try { return Number(localStorage.getItem('snake-best')) || 0; } catch { return 0; }
-}
-function saveBest(v) {
-  try { localStorage.setItem('snake-best', v); } catch {}
-}
-
 // ---------- 开机 ----------
+readIncomingChallenge();
+showChallengeBanner();
 reset();
-state = 'ready';
 draw();
-overlayHint.textContent = isTouch
-  ? '点击屏幕开始 · 滑动屏幕控制方向'
-  : '按 空格 开始 · 方向键 / WASD 控制';
-if (isTouch) document.querySelector('.controls .hint').textContent = '轻点屏幕 = 开始 / 暂停';
+updateSkinLine();
+renderGallery();
+// 第一次来先起名，老玩家直接进大厅
+let nickWasSet = false;
+try { nickWasSet = !!localStorage.getItem('snake-nick-set'); } catch {}
+if (nickWasSet) toLobby();
+else { state = 'nick'; nickInput.value = ''; showPage('page-nick'); }
 </script>
 </body>
 </html>
