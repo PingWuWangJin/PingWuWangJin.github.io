@@ -1,0 +1,752 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>时间壳</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⏳</text></svg>">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(1200px 800px at 50% 18%, #141b36, #0b1220 70%);
+    color: #e2e8f0;
+    font-family: system-ui, "Microsoft YaHei", serif; padding: 16px;
+    -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+  }
+  .game { display: flex; flex-direction: column; gap: 10px; align-items: center; }
+  .topbar { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  h1 { font-size: 19px; font-weight: 500; letter-spacing: 2px; }
+  h1 span { color: #a78bfa; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  .chip {
+    background: rgba(30, 41, 59, .8); border: 1px solid #2b3a55; border-radius: 999px;
+    padding: 4px 11px; font-size: 12px; color: #94a3b8;
+  }
+  .chip b { color: #e2e8f0; font-weight: 500; }
+  .board-wrap { position: relative; }
+  canvas {
+    display: block; width: min(480px, calc(100vw - 32px)); height: auto;
+    background: #0d1526; border: 1px solid #2b3a55; border-radius: 14px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, .45);
+  }
+  .overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    background: rgba(9, 12, 24, .92); backdrop-filter: blur(4px);
+    border-radius: 14px; text-align: center; padding: 14px; z-index: 8;
+  }
+  .hidden { display: none !important; }
+  .page { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; }
+  .page h2 { font-size: 21px; font-weight: 500; }
+  .page h2 span { color: #a78bfa; }
+  .page p { font-size: 13px; color: #94a3b8; line-height: 1.75; }
+  .btn-primary {
+    background: linear-gradient(135deg, #a78bfa, #7c3aed); color: #fff; border: none; border-radius: 10px;
+    padding: 11px 26px; font-size: 14px; font-family: inherit; cursor: pointer;
+    box-shadow: 0 4px 18px rgba(124, 58, 237, .35);
+  }
+  .btn-primary:hover { filter: brightness(1.15); }
+  .btn2 { background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 9px; padding: 9px 15px; font-size: 13px; font-family: inherit; cursor: pointer; }
+  .btn2.cooling { opacity: .45; }
+  .pad { display: flex; gap: 8px; width: 100%; max-width: 480px; }
+  .pad button {
+    flex: 1; background: #1e293b; color: #e2e8f0; border: 1px solid #334155; border-radius: 10px;
+    padding: 12px 0; font-size: 15px; font-family: inherit; cursor: pointer;
+  }
+  .pad button:active { background: #334155; }
+  .hint { font-size: 12px; color: #64748b; text-align: center; }
+  /* ---------- 终章 ---------- */
+  #page-finale { justify-content: flex-start; padding-top: 6px; }
+  .fin-text { min-height: 132px; display: flex; flex-direction: column; gap: 6px; justify-content: center; }
+  .fin-line {
+    font-size: 14px; color: #cbd5e1; letter-spacing: 2px; line-height: 1.9;
+    opacity: 0; transform: translateY(10px);
+    animation: finIn 1.6s ease forwards;
+  }
+  .fin-line em { font-style: normal; color: #c4b5fd; }
+  .fin-line.last { color: #e2e8f0; font-size: 15px; }
+  @keyframes finIn { to { opacity: 1; transform: none; } }
+  .fin-btn { opacity: 0; animation: finIn 1.4s ease 12.2s forwards; }
+  .fin-svg text {
+    font-family: system-ui, "Microsoft YaHei", serif;
+    fill: #94a3b8; font-size: 11px; opacity: 0;
+    animation: finIn 1.2s ease forwards;
+  }
+</style>
+</head>
+<body>
+<main class="game">
+  <div class="topbar">
+    <h1>⏳ 时间<span>壳</span></h1>
+    <div class="chips">
+      <span class="chip">关卡 <b id="lv">1</b>/10</span>
+      <span class="chip" id="lvname">「苏醒」</span>
+      <span class="chip">时间壳 <b id="ghosts">0</b></span>
+      <span class="chip">试错 <b id="deaths">0</b></span>
+    </div>
+  </div>
+  <div class="board-wrap">
+    <canvas id="board" width="480" height="600"></canvas>
+    <div class="overlay" id="overlay">
+      <div class="page" id="page-start">
+        <h2>⏳ 时间<span>壳</span></h2>
+        <p>这是一款和<b style="color:#c4b5fd">过去的自己</b>合作的游戏。<br>
+        你死后，生前的一秒会凝成"时间壳"——它循环重演你的动作，<br>
+        可以替你踩住机关，也可以成为你的垫脚石。<br>
+        <span style="color:#818cf8">留壳有 1 秒冷却：失败要留出节奏，不要浪费。</span></p>
+        <button class="btn-primary" id="startBtn" type="button">⏳ 进入时间</button>
+        <p class="hint" id="start-hint"></p>
+      </div>
+      <div class="page hidden" id="page-finale">
+        <div class="fin-svg" id="fin-svg"></div>
+        <div class="fin-text" id="fin-text"></div>
+        <div class="fin-btn"><button class="btn-primary" id="finaleBtn" type="button">↺ 重走时间</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="pad">
+    <button id="pLeft" type="button">◀</button>
+    <button id="pJump" type="button">⬆ 跳</button>
+    <button id="pRight" type="button">▶</button>
+    <button id="pReset" type="button">⏪ 留壳</button>
+  </div>
+  <span class="hint">电脑：← → 移动 · ↑/空格 跳 · R 留壳（1 秒冷却） · 手机：下方按钮 · 门是通天的，跳不过去，只能靠壳</span>
+</main>
+<script>
+// ---------- 基础 ----------
+const canvas = document.getElementById('board');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
+const boardWrap = document.querySelector('.board-wrap');
+const overlay = document.getElementById('overlay');
+const lvEl = document.getElementById('lv');
+const ghostsEl = document.getElementById('ghosts');
+const deathsEl = document.getElementById('deaths');
+const pReset = document.getElementById('pReset');
+const lvnameEl = document.getElementById('lvname');
+
+let AC = null;
+function tone(freq, dur, type, vol, when) {
+  try {
+    if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+    if (AC.state === 'suspended') AC.resume();
+    const o = AC.createOscillator(), g = AC.createGain();
+    o.type = type || 'square'; o.frequency.value = freq;
+    const t0 = AC.currentTime + (when || 0);
+    g.gain.setValueAtTime(vol, t0);
+    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+    o.connect(g); g.connect(AC.destination);
+    o.start(t0); o.stop(t0 + dur + 0.02);
+  } catch {}
+}
+function sfxJump() { tone(420, 0.08, 'square', 0.04); }
+function sfxDie() { tone(200, 0.25, 'sawtooth', 0.07); tone(150, 0.2, 'sawtooth', 0.05, 0.1); }
+function sfxShell() { tone(700, 0.1, 'sine', 0.06); tone(1050, 0.14, 'sine', 0.05, 0.07); }
+function sfxPlate() { tone(760, 0.08, 'square', 0.05); }
+function sfxDeny() { tone(160, 0.08, 'square', 0.05); }
+function sfxWin() { [392, 523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, 'sine', 0.07, i * 0.28)); }
+function vib(ms) { try { if (navigator.vibrate) navigator.vibrate(ms); } catch {} }
+
+// ---------- 关卡（10 层）----------
+// 设计铁律：门全部通天（y 320→560），跳不过去；踩板全部远离对应的门——
+// 不留下时间壳，就绝对过不去。台阶高 ≤ 80（跳跃极限 90）。
+const LEVELS = [
+  { name: '苏醒', spawn: [60, 520], exit: [420, 545],
+    plats: [[0, 560, 480, 40]],
+    spikes: [[130, 545, 70, 15]], plates: [], doors: [],
+    hint: '教学层：跳过尖刺，走到旗帜。死亡和 R 都会留下时间壳。' },
+  { name: '门与板', spawn: [150, 520], exit: [450, 545],
+    plats: [[0, 560, 480, 40]],
+    spikes: [[40, 548, 70, 12]],
+    plates: [{ x: 180, y: 548, w: 70 }],
+    doors: [{ x: 350, y: 320, w: 24, h: 240, plate: 0 }],
+    hint: '门是通天的，跳不过去。去右边踩板，死一次，让壳替你踩。' },
+  { name: '两门之间', spawn: [100, 520], exit: [400, 545],
+    plats: [[0, 560, 480, 40]],
+    plates: [{ x: 30, y: 548, w: 70 }, { x: 255, y: 548, w: 70 }],
+    doors: [{ x: 190, y: 320, w: 24, h: 240, plate: 0 }, { x: 330, y: 320, w: 24, h: 240, plate: 1 }],
+    hint: '壳 A 开左门，先进中间留壳 B——它会替你开右门。' },
+  { name: '信号塔', spawn: [50, 520], exit: [440, 545],
+    plats: [[0, 560, 480, 40], [150, 485, 130, 24], [340, 410, 120, 24]],
+    spikes: [[300, 548, 60, 12]],
+    plates: [{ x: 380, y: 398, w: 70 }],
+    doors: [{ x: 180, y: 320, w: 24, h: 240, plate: 0 }],
+    hint: '两级台阶各 75：录一段爬塔踩板的动作，壳会替你爬。' },
+  { name: '左右互搏', spawn: [130, 520], exit: [235, 545],
+    plats: [[0, 560, 480, 40]],
+    spikes: [[150, 548, 60, 12], [330, 548, 60, 12]],
+    plates: [{ x: 30, y: 548, w: 60 }, { x: 400, y: 548, w: 60 }],
+    doors: [{ x: 205, y: 320, w: 24, h: 240, plate: 0 }, { x: 275, y: 320, w: 24, h: 240, plate: 1 }],
+    hint: '两扇门紧挨着：左右各死一次，它们会同时为你敞开。' },
+  { name: '三重门', spawn: [100, 520], exit: [440, 545],
+    plats: [[0, 560, 480, 40]], spikes: [],
+    plates: [{ x: 40, y: 548, w: 60 }, { x: 255, y: 548, w: 60 }, { x: 370, y: 548, w: 60 }],
+    doors: [{ x: 150, y: 320, w: 24, h: 240, plate: 0 }, { x: 240, y: 320, w: 24, h: 240, plate: 1 }, { x: 330, y: 320, w: 24, h: 240, plate: 2 }],
+    hint: '三扇门三块板：三次赴死，三个壳，一条生路。' },
+  { name: '暗刺走廊', spawn: [60, 520], exit: [440, 545],
+    plats: [[0, 560, 480, 40]],
+    spikes: [[120, 548, 30, 12], [172, 548, 40, 12], [280, 548, 40, 12]],
+    plates: [{ x: 140, y: 548, w: 26 }, { x: 220, y: 548, w: 26 }],
+    doors: [{ x: 330, y: 320, w: 24, h: 240, plate: 0 }, { x: 380, y: 320, w: 24, h: 240, plate: 1 }],
+    hint: '刺丛中的窄板：跳板要靠跳跃，两段录像两扇门。' },
+  { name: '深渊高塔', spawn: [50, 520], exit: [440, 545],
+    plats: [[0, 560, 480, 40], [70, 485, 110, 24], [240, 410, 110, 24], [400, 335, 80, 24]],
+    spikes: [[110, 548, 40, 12], [200, 548, 40, 12], [360, 548, 40, 12]],
+    plates: [{ x: 410, y: 323, w: 60 }],
+    doors: [{ x: 180, y: 320, w: 24, h: 240, plate: 0 }],
+    hint: '三级爬升，深渊在每级之下：录完整的一段登塔。' },
+  { name: '高台双门', spawn: [130, 520], exit: [420, 545],
+    plats: [[0, 560, 480, 40], [200, 480, 110, 24]],
+    spikes: [[120, 548, 30, 12], [290, 548, 30, 12]],
+    plates: [{ x: 40, y: 548, w: 60 }, { x: 240, y: 468, w: 60 }],
+    doors: [{ x: 160, y: 320, w: 24, h: 240, plate: 0 }, { x: 330, y: 320, w: 24, h: 240, plate: 1 }],
+    hint: '一个壳在地面，一个壳在台上：两扇门串联，缺一不可。' },
+  { name: '四壳交响', spawn: [120, 520], exit: [475, 545],
+    plats: [[0, 560, 480, 40], [200, 480, 110, 24]],
+    spikes: [[140, 548, 20, 12], [185, 548, 20, 12], [235, 548, 20, 12], [285, 548, 20, 12]],
+    plates: [{ x: 30, y: 548, w: 60 }, { x: 240, y: 468, w: 60 }, { x: 350, y: 548, w: 60 }, { x: 400, y: 548, w: 45 }],
+    doors: [{ x: 160, y: 320, w: 24, h: 240, plate: 0 }, { x: 210, y: 320, w: 24, h: 240, plate: 1 }, { x: 260, y: 320, w: 24, h: 240, plate: 2 }, { x: 310, y: 320, w: 24, h: 240, plate: 3 }],
+    hint: '终局：四扇门四块板，四个壳层层递进。冷却 1 秒——节奏就是一切。' },
+];
+
+// ---------- 状态 ----------
+let lvIdx = 0, deaths = 0;
+let player, ghosts, rec, platesOpen, parts;
+let shellCd = 0;
+let state, rafId = 0, lastT = 0, shakeT = 0;
+let keys = {};
+let stars = [];
+for (let i = 0; i < 50; i++) stars.push({ x: Math.random() * W, y: Math.random() * H, s: Math.random() * 1.4 + 0.3 });
+// 缓存的渐变与光晕贴图（性能：避免每帧新建对象导致卡顿）
+let bgGrad = null, glowSprite = null;
+function buildStatics() {
+  bgGrad = ctx.createLinearGradient(0, 0, 0, H);
+  bgGrad.addColorStop(0, '#121a36');
+  bgGrad.addColorStop(1, '#0d1526');
+  glowSprite = document.createElement('canvas');
+  glowSprite.width = 64; glowSprite.height = 64;
+  const g2 = glowSprite.getContext('2d');
+  const gg = g2.createRadialGradient(32, 32, 2, 32, 32, 30);
+  gg.addColorStop(0, 'rgba(167, 139, 250, .55)');
+  gg.addColorStop(1, 'rgba(167, 139, 250, 0)');
+  g2.fillStyle = gg;
+  g2.fillRect(0, 0, 64, 64);
+}
+buildStatics();
+
+// ---------- 状态与流程 ----------
+function loadLevel(i) {
+  player = { x: LEVELS[i].spawn[0], y: LEVELS[i].spawn[1], vx: 0, vy: 0, onGround: false, face: 1, sq: 0 };
+  ghosts = []; rec = []; parts = [];
+  platesOpen = LEVELS[i].plates.map(() => false);
+  shellCd = 0;
+  lvEl.textContent = i + 1;
+  lvnameEl.textContent = '「' + LEVELS[i].name + '」';
+  ghostsEl.textContent = 0;
+}
+
+function respawn(makeShell) {
+  if (makeShell) {
+    if (shellCd > 0) {
+      showFloat(player.x, player.y - 20, '⏳ 冷却中');
+    } else if (rec.length > 24) {
+      ghosts.push({ buf: rec.slice(), t: 0 });
+      if (ghosts.length > 5) ghosts.shift();
+      ghostsEl.textContent = ghosts.length;
+      shellCd = 1;
+      sfxShell(); vib(25);
+      for (let k = 0; k < 10; k++) parts.push({ x: player.x, y: player.y, vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200, life: 0.5, c: '#a78bfa' });
+    } else {
+      showFloat(player.x, player.y - 20, '⏳ 录制太短');
+    }
+  }
+  rec = [];
+  player = { x: LEVELS[lvIdx].spawn[0], y: LEVELS[lvIdx].spawn[1], vx: 0, vy: 0, onGround: false, face: 1, sq: 0 };
+  updateResetBtn();
+}
+
+function die() {
+  sfxDie(); vib(60);
+  deaths++;
+  deathsEl.textContent = deaths;
+  shakeT = 0.25;
+  for (let k = 0; k < 12; k++) parts.push({ x: player.x, y: player.y, vx: (Math.random() - 0.5) * 260, vy: (Math.random() - 0.5) * 260, life: 0.5, c: '#f472b6' });
+  respawn(true);
+}
+
+function doReset() {
+  if (state !== 'playing') return false;
+  if (shellCd > 0) { sfxDeny(); showFloat(player.x, player.y - 22, '⏳ ' + shellCd.toFixed(1) + 's'); return false; }
+  tone(300, 0.08, 'square', 0.04);
+  respawn(true);
+  return true;
+}
+
+function updateResetBtn() {
+  pReset.textContent = shellCd > 0 ? '⏳ ' + shellCd.toFixed(1) + 's' : '⏪ 留壳';
+  pReset.classList.toggle('cooling', shellCd > 0);
+}
+
+// ---------- 机关 ----------
+function overlap(ax, ay, aw, ah, bx, by, bw, bh) {
+  return ax + aw > bx && ax < bx + bw && ay + ah > by && ay < by + bh;
+}
+function solidRects() {
+  const rects = LEVELS[lvIdx].plats.slice();
+  LEVELS[lvIdx].doors.forEach((d, i) => { if (!platesOpen[i]) rects.push([d.x, d.y, d.w, d.h]); });
+  return rects;
+}
+function updatePlates() {
+  LEVELS[lvIdx].plates.forEach((p, i) => {
+    let pressed = overlap(player.x - 7, player.y - 9, 14, 18, p.x, p.y, p.w, 12);
+    for (const g of ghosts) {
+      const pos = g.buf[Math.floor(g.t) % g.buf.length];
+      if (pos && overlap(pos.x - 7, pos.y - 9, 14, 18, p.x, p.y, p.w, 12)) pressed = true;
+    }
+    if (pressed && !platesOpen[i]) { platesOpen[i] = true; sfxPlate(); vib(15); }
+    if (!pressed) platesOpen[i] = false;
+  });
+}
+
+// ---------- 物理 ----------
+function step(dt) {
+  if (shellCd > 0) { shellCd = Math.max(0, shellCd - dt); updateResetBtn(); }
+
+  rec.push({ x: player.x, y: player.y });
+  if (rec.length > 480) rec.splice(0, rec.length - 480);
+
+  for (const g of ghosts) g.t += dt * 60;
+
+  let mx = 0;
+  if (keys.ArrowLeft || keys.KeyA) mx -= 1;
+  if (keys.ArrowRight || keys.KeyD) mx += 1;
+  player.vx = mx * 250;
+  if (mx !== 0) player.face = mx;
+  if ((keys.ArrowUp || keys.Space) && player.onGround) {
+    player.vy = -520;
+    player.onGround = false;
+    player.sq = -0.18;
+    sfxJump(); vib(8);
+  }
+  player.vy += 1500 * dt;
+  player.sq *= Math.pow(0.001, dt);
+
+  const solids = solidRects();
+  player.x += player.vx * dt;
+  for (const r of solids) {
+    if (overlap(player.x - 7, player.y - 9, 14, 18, r[0], r[1], r[2], r[3])) {
+      if (player.vx > 0) player.x = r[0] - 7;
+      else if (player.vx < 0) player.x = r[0] + r[2] + 7;
+    }
+  }
+  player.x = Math.max(7, Math.min(W - 7, player.x));
+
+  const prevBottom = player.y + 9;
+  player.y += player.vy * dt;
+  const wasAir = !player.onGround;
+  player.onGround = false;
+  for (const r of solids) {
+    if (overlap(player.x - 7, player.y - 9, 14, 18, r[0], r[1], r[2], r[3])) {
+      if (player.vy > 0) {
+        player.y = r[1] - 9; player.vy = 0; player.onGround = true;
+        if (wasAir && player.sq < 0.05) player.sq = 0.16;
+      } else if (player.vy < 0) { player.y = r[1] + r[3] + 9; player.vy = 0; }
+    }
+  }
+  if (player.vy >= 0) {
+    for (const g of ghosts) {
+      const pos = g.buf[Math.floor(g.t) % g.buf.length];
+      if (!pos) continue;
+      const gtop = pos.y - 9;
+      if (prevBottom <= gtop + 4 && player.y + 9 >= gtop &&
+          player.x + 7 > pos.x - 7 && player.x - 7 < pos.x + 7) {
+        player.y = gtop - 9;
+        player.vy = 0;
+        player.onGround = true;
+      }
+    }
+  }
+  for (const g of ghosts) {
+    const pos = g.buf[Math.floor(g.t) % g.buf.length];
+    if (!pos) continue;
+    if (Math.abs(player.y - pos.y) < 15 && Math.abs(player.x - pos.x) < 13 && Math.abs(player.y - pos.y) > 3) {
+      player.x += Math.sign(player.x - pos.x || 1) * 90 * dt;
+    }
+  }
+  // 深度去穿插：任何交互之后都不允许玩家留在实体里（防卡墙/闪现）
+  for (const r of solidRects()) {
+    if (overlap(player.x - 7, player.y - 9, 14, 18, r[0], r[1], r[2], r[3])) {
+      const oL = player.x + 7 - r[0], oR = r[0] + r[2] - (player.x - 7);
+      const oT = player.y + 9 - r[1], oB = r[1] + r[3] - (player.y - 9);
+      const m = Math.min(oL, oR, oT, oB);
+      if (m === oL) player.x = r[0] - 7;
+      else if (m === oR) player.x = r[0] + r[2] + 7;
+      else if (m === oT) player.y = r[1] - 9;
+      else player.y = r[1] + r[3] + 9;
+    }
+  }
+  for (const sp of (LEVELS[lvIdx].spikes || [])) {
+    if (overlap(player.x - 5, player.y - 7, 10, 14, sp[0] + 3, sp[1] + sp[3] * 0.5, sp[2] - 6, sp[3] * 0.5)) { die(); return; }
+  }
+  if (player.y > H + 30) { die(); return; }
+
+  updatePlates();
+
+  const ex = LEVELS[lvIdx].exit;
+  if (Math.hypot(player.x - ex[0], player.y - ex[1]) < 26) {
+    if (lvIdx === LEVELS.length - 1) {
+      state = 'won';
+      sfxWin(); vib(60);
+      showFinale();
+      return;
+    }
+    lvIdx++;
+    loadLevel(lvIdx);
+    tone(700, 0.1, 'square', 0.05); tone(900, 0.12, 'square', 0.05, 0.1);
+  }
+}
+
+// ---------- 绘制 ----------
+function drawGhostBody(x, y, alpha, face) {
+  // 时间壳 = 你的影子（紫)
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  const g = ctx.createLinearGradient(x - 7, y - 9, x + 7, y + 9);
+  g.addColorStop(0, 'rgba(196, 181, 253, .95)');
+  g.addColorStop(1, 'rgba(76, 29, 149, .95)');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(x - 7, y - 9, 14, 18, 5); else ctx.rect(x - 7, y - 9, 14, 18);
+  ctx.fill();
+  ctx.fillStyle = 'rgba(232, 224, 255, .9)';
+  ctx.beginPath();
+  ctx.arc(x + face * 3, y - 3, 2, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function draw() {
+  const L = LEVELS[lvIdx];
+  ctx.save();
+  if (shakeT > 0) { shakeT -= 1 / 60; ctx.translate((Math.random() - 0.5) * 9, (Math.random() - 0.5) * 9); }
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(-12, -12, W + 24, H + 24);
+  ctx.fillStyle = 'rgba(148, 163, 184, .3)';
+  for (const st of stars) ctx.fillRect(st.x, st.y, st.s, st.s);
+  // 平台
+  for (const r of L.plats) {
+    ctx.fillStyle = 'rgba(0, 0, 0, .35)';
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(r[0] + 2, r[1] + 4, r[2], r[3], 6); ctx.fill(); }
+    ctx.fillStyle = '#2b3a55';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(r[0], r[1], r[2], r[3], 6); else ctx.rect(r[0], r[1], r[2], r[3]);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(226, 232, 240, .22)';
+    ctx.fillRect(r[0] + 2, r[1], r[2] - 4, 3);
+  }
+  // 门（通天）
+  L.doors.forEach((d, i) => {
+    if (platesOpen[i]) {
+      ctx.strokeStyle = 'rgba(167, 139, 250, .55)';
+      ctx.setLineDash([6, 6]);
+      ctx.lineDashOffset = -Date.now() / 40;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(d.x, d.y, d.w, d.h);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(167, 139, 250, .12)';
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+    } else {
+      const g = ctx.createLinearGradient(d.x, d.y, d.x + d.w, d.y + d.h);
+      g.addColorStop(0, '#7c3aed'); g.addColorStop(1, '#3b1470');
+      ctx.fillStyle = g;
+      ctx.fillRect(d.x, d.y, d.w, d.h);
+      ctx.fillStyle = 'rgba(226, 232, 240, .9)';
+      ctx.font = '14px system-ui';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('🔒', d.x + d.w / 2, d.y + d.h / 2);
+      ctx.fillStyle = 'rgba(226,232,240,.55)';
+      ctx.font = '10px system-ui';
+      ctx.fillText(String.fromCharCode(65 + i), d.x + d.w / 2, d.y - 10);
+    }
+  });
+  // 踩板
+  L.plates.forEach((p, i) => {
+    const on = platesOpen[i];
+    ctx.fillStyle = on ? '#fbbf24' : '#3d4c63';
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(p.x, p.y + (on ? 3 : 0), p.w, on ? 7 : 10, 3); else ctx.rect(p.x, p.y, p.w, 10);
+    ctx.fill();
+    ctx.fillStyle = on ? '#fbbf24' : '#64748b';
+    ctx.font = '10px system-ui';
+    ctx.textAlign = 'center';
+    ctx.fillText(String.fromCharCode(65 + i), p.x + p.w / 2, p.y - 6);
+  });
+  // 尖刺
+  for (const sp of (L.spikes || [])) {
+    const n = Math.floor(sp[2] / 14);
+    for (let i = 0; i < n; i++) {
+      ctx.fillStyle = '#7f1d1d';
+      ctx.beginPath();
+      ctx.moveTo(sp[0] + i * 14, sp[1] + sp[3]);
+      ctx.lineTo(sp[0] + i * 14 + 7, sp[1] + 2);
+      ctx.lineTo(sp[0] + i * 14 + 14, sp[1] + sp[3]);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = '#f87171';
+      ctx.beginPath();
+      ctx.moveTo(sp[0] + i * 14 + 3, sp[1] + sp[3]);
+      ctx.lineTo(sp[0] + i * 14 + 7, sp[1] + 5);
+      ctx.lineTo(sp[0] + i * 14 + 11, sp[1] + sp[3]);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+  // 出口
+  const ex = L.exit;
+  ctx.save();
+  ctx.translate(ex[0], ex[1]);
+  ctx.rotate(Date.now() / 500);
+  ctx.strokeStyle = '#4ade80';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  for (let a = 0; a < Math.PI * 2; a += 0.5) {
+    const rr = 10 + a * 1.6;
+    ctx.lineTo(Math.cos(a) * rr, Math.sin(a) * rr);
+  }
+  ctx.stroke();
+  ctx.restore();
+  ctx.font = '20px "Segoe UI Emoji","Apple Color Emoji",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('🚩', ex[0], ex[1]);
+  // 时间壳（紫影）
+  for (const g of ghosts) {
+    const idx = Math.floor(g.t) % g.buf.length;
+    const pos = g.buf[idx];
+    if (!pos) continue;
+    const fade = Math.min(1, idx / 8, (g.buf.length - idx) / 8);
+    // 光晕（贴图，不再用 shadowBlur）
+    ctx.drawImage(glowSprite, pos.x - 26, pos.y - 26, 52, 52);
+    drawGhostBody(pos.x, pos.y, 0.82 * fade, player.face);
+  }
+  // 粒子
+  for (const p of parts) {
+    ctx.globalAlpha = p.life / 0.5;
+    ctx.fillStyle = p.c;
+    ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+  }
+  ctx.globalAlpha = 1;
+  // 玩家
+  const p = player;
+  const sq = p.sq;
+  const bw = 14 * (1 - sq * 0.6), bh = 18 * (1 + sq);
+  const py = p.y + 9 - bh / 2;
+  if (p.onGround) {
+    ctx.fillStyle = 'rgba(0, 0, 0, .3)';
+    ctx.beginPath();
+    ctx.ellipse(p.x, p.y + 9, 9, 3, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  const bodyG = ctx.createLinearGradient(p.x - 7, py, p.x + 7, py + bh);
+  bodyG.addColorStop(0, '#f8fafc');
+  bodyG.addColorStop(1, '#94a3b8');
+  ctx.fillStyle = bodyG;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(p.x - bw / 2, py - bh / 2, bw, bh, 5); else ctx.rect(p.x - bw / 2, py - bh / 2, bw, bh);
+  ctx.fill();
+  ctx.strokeStyle = '#a78bfa';
+  ctx.strokeStyle = 'rgba(167, 139, 250, .6)';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+  // 围巾
+  ctx.strokeStyle = '#f472b6';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(p.x - p.face * 4, py - bh / 2 + 5);
+  ctx.lineTo(p.x - p.face * (10 + Math.abs(p.vx) * 0.02), py - bh / 2 + 6 + Math.sin(Date.now() / 90) * 2);
+  ctx.stroke();
+  // 眼睛
+  ctx.fillStyle = '#1e293b';
+  ctx.beginPath();
+  ctx.arc(p.x + p.face * 3, py - bh / 2 + 6, 2, 0, Math.PI * 2);
+  ctx.arc(p.x + p.face * 6.5, py - bh / 2 + 6, 2, 0, Math.PI * 2);
+  ctx.fill();
+  // 录制轨迹
+  ctx.strokeStyle = 'rgba(167, 139, 250, .2)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  for (let i = 0; i < rec.length; i += 4) {
+    if (i === 0) ctx.moveTo(rec[i].x, rec[i].y); else ctx.lineTo(rec[i].x, rec[i].y);
+  }
+  ctx.stroke();
+  ctx.restore();
+}
+
+function showFloat(x, y, text) {
+  const s = document.createElement('span');
+  s.className = 'float';
+  s.textContent = text;
+  s.style.left = (x / W * 100) + '%';
+  s.style.top = (y / H * 100) + '%';
+  s.style.position = 'absolute';
+  boardWrap.appendChild(s);
+  setTimeout(() => s.remove(), 900);
+}
+
+// ---------- 主循环 ----------
+function loop() {
+  if (state !== 'playing') return;
+  const now = Date.now();
+  if (!lastT) lastT = now;
+  const dt = Math.min(0.033, (now - lastT) / 1000);
+  lastT = now;
+  step(dt);
+  if (state !== 'playing') return;
+  draw();
+  rafId = requestAnimationFrame(loop);
+}
+
+// ---------- 输入 ----------
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyR' && state === 'playing') doReset();
+  if (e.code === 'Enter' && state !== 'playing') begin();
+});
+document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+function bindHold(id, down, up) {
+  const el = document.getElementById(id);
+  el.addEventListener('pointerdown', (e) => { e.preventDefault(); down(); });
+  if (up) { el.addEventListener('pointerup', up); el.addEventListener('pointerleave', up); }
+}
+bindHold('pLeft', () => keys.ArrowLeft = true, () => keys.ArrowLeft = false);
+bindHold('pRight', () => keys.ArrowRight = true, () => keys.ArrowRight = false);
+bindHold('pJump', () => keys.ArrowUp = true, () => keys.ArrowUp = false);
+bindHold('pReset', () => doReset());
+
+// ---------- 终章（播放一遍的圣洁动画 + 文案 + 合成圣咏） ----------
+function finaleMusic() {
+  const seq = [523, 659, 784, 659, 880, 1046, 784, 659, 523, 587, 659, 523, 440, 392, 0, 0,
+               523, 659, 784, 659, 880, 1046, 880, 784, 659, 587, 523, 0, 440, 392, 0, 0];
+  let i = 0;
+  tone(110, 14, 'triangle', 0.03); // 低音持续铺底
+  const iv = setInterval(() => {
+    if (i >= seq.length) { clearInterval(iv); return; }
+    if (seq[i]) { tone(seq[i], 0.9, 'sine', 0.05); tone(seq[i] / 2, 1.1, 'triangle', 0.04); }
+    i++;
+  }, 620);
+}
+
+function showFinale() {
+  const deathsLine = deaths;
+  const svg = `
+  <svg viewBox="0 0 480 330" width="100%" style="max-width:420px;display:block;margin:0 auto">
+    <defs>
+      <linearGradient id="beam" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#e9d5ff" stop-opacity=".5"/>
+        <stop offset="1" stop-color="#e9d5ff" stop-opacity="0"/>
+      </linearGradient>
+      <radialGradient id="starG">
+        <stop offset="0" stop-color="#fef9c3"/>
+        <stop offset=".5" stop-color="#fde68a"/>
+        <stop offset="1" stop-color="#fde68a" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect x="150" y="0" width="180" height="330" fill="url(#beam)" opacity="0">
+      <animate attributeName="opacity" to="0.8" dur="2.2s" begin="0.4s" fill="freeze"/>
+    </rect>
+    ${[0, 1, 2, 3, 4].map(i => {
+      const y = 280 - i * 46, x = 150 + i * 34;
+      return `<g opacity="0">
+        <animate attributeName="opacity" to="0.9" dur="0.9s" begin="${1.2 + i * 0.9}s" fill="freeze"/>
+        <rect x="${x}" y="${y}" width="26" height="34" rx="6" fill="#7c3aed" opacity="0.85"/>
+        <circle cx="${x + 13}" cy="${y - 6}" r="9" fill="#c4b5fd" opacity="0.9"/>
+      </g>`;
+    }).join('')}
+    <g class="climber">
+      <rect x="60" y="286" width="22" height="30" rx="7" fill="#f8fafc"/>
+      <circle cx="71" cy="278" r="11" fill="#f8fafc"/>
+      <animateTransform attributeName="transform" type="translate" values="0,0" dur="0.1s" fill="freeze"/>
+    </g>
+    <circle cx="285" cy="40" r="0" fill="url(#starG)">
+      <animate attributeName="r" to="34" dur="1.6s" begin="6.4s" fill="freeze"/>
+    </circle>
+    <circle cx="285" cy="40" r="3" fill="#fffbeb" opacity="0">
+      <animate attributeName="opacity" to="1" dur="0.8s" begin="6.4s" fill="freeze"/>
+    </circle>
+    <g class="climber-anim">
+      <animateTransform attributeName="transform" type="translate" dur="7s" begin="1.6s"
+        values="0,0; 64,-46; 64,-46; 98,-92; 98,-92; 132,-138; 132,-138; 165,-184; 165,-184"
+        keyTimes="0;0.14;0.28;0.4;0.5;0.62;0.72;0.85;1" calcMode="spline"
+        keySplines="0.4 0 0.6 1;0 0 1 1;0.4 0 0.6 1;0 0 1 1;0.4 0 0.6 1;0 0 1 1;0.4 0 0.6 1;0 0 1 1"
+        fill="freeze"/>
+    </g>
+  </svg>`;
+  const lines = [
+    ['每一步登高，都踩着一段<em>旧的时间</em>。', 1.2],
+    ['他们叫它失败。我叫它，<em>来路</em>。', 3.4],
+    ['前人以熄灭自己为炬，照亮我未曾抵达的远方。', 5.6],
+    ['而我，终将成为后来者脚下的——<em>又一级台阶</em>。', 7.8],
+    ['人类就是这样，一寸一寸，拓宽了世界的边界。', 10.2],
+    [`这一次，你试错了 <em>${deathsLine}</em> 次。每一次，都算数。`, 12],
+  ];
+  const page = document.getElementById('page-finale');
+  document.getElementById('fin-svg').innerHTML = svg;
+  document.getElementById('fin-text').innerHTML = lines.map(([t, d], i) =>
+    `<div class="fin-line ${i === lines.length - 2 ? 'last' : ''}" style="animation-delay:${d}s">${t}</div>`).join('');
+  const btn = page.querySelector('.fin-btn');
+  // 终章按钮的监听在开机时已挂好，这里不再重复添加
+  finaleMusic();
+  showPage('page-finale');
+}
+document.getElementById('finaleBtn').addEventListener('click', () => { lvIdx = 0; deaths = 0; deathsEl.textContent = 0; begin(); });
+
+// ---------- 页面与开机 ----------
+function showPage(id) {
+  for (const p of overlay.querySelectorAll('.page')) p.classList.toggle('hidden', p.id !== id);
+  overlay.classList.remove('hidden');
+}
+function begin() {
+  loadLevel(lvIdx);
+  state = 'playing';
+  overlay.classList.add('hidden');
+  lastT = 0;
+  rafId = requestAnimationFrame(loop);
+}
+document.getElementById('startBtn').addEventListener('click', () => { lvIdx = 0; deaths = 0; deathsEl.textContent = 0; begin(); });
+
+const isTouch = matchMedia('(pointer: coarse)').matches;
+document.getElementById('start-hint').textContent = isTouch
+  ? '下方按钮操控 · 死亡和 ⏪ 留壳都受 1 秒冷却限制'
+  : '← → 移动 · ↑/空格 跳 · R 留壳（1 秒冷却）';
+
+loadLevel(0);
+state = 'ready';
+draw();
+// 自动化测试（第 2 关全链路）：走向踩板 → 留壳 → 赴死 → 壳踩板开门 → 玩家通过 → 进入下一关
+if (location.search.indexOf('autotest') >= 0) {
+  lvIdx = 1;
+  begin();
+  cancelAnimationFrame(rafId);
+  let ticks = 0, platesOpenMax = 0;
+  const iv = setInterval(() => {
+    ticks++;
+    state = 'playing';
+    keys.ArrowRight = (ticks >= 0 && ticks < 20) || (ticks >= 110 && ticks < 180);
+    if (ticks === 100) doReset();
+    step(0.016);
+    platesOpenMax = Math.max(platesOpenMax, platesOpen.filter(Boolean).length);
+    draw();
+    if (ticks >= 220 || state !== 'playing') {
+      clearInterval(iv);
+      document.body.dataset.autotest = JSON.stringify({
+        ghosts: ghosts.length, deaths, platesOpenMax, levelReached: lvIdx + 1,
+      });
+      state = 'stopped';
+    }
+  }, 16);
+}
+</script>
+</body>
+</html>
